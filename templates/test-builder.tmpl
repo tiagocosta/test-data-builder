@@ -1,0 +1,33 @@
+package testdatabuilder
+
+import (
+    "github.com/brianvoe/gofakeit/v7"
+{{- range $index, $import := .Imports }}
+    {{ $import.Alias }}"{{ $import.Path }}"
+{{- end }}
+)
+{{ range $index, $dataStruct := .Structs }}
+type {{ $dataStruct.Name }}Builder struct {
+    {{ $dataStruct.Name | ToLower }} *{{ $dataStruct.Package }}.{{ $dataStruct.Name }}
+}
+
+func New{{ $dataStruct.Name }}Builder() *{{ $dataStruct.Name }}Builder {
+    var {{ $dataStruct.Name | ToLower }} {{ $dataStruct.Package }}.{{ $dataStruct.Name }}
+    gofakeit.Struct(&{{ $dataStruct.Name | ToLower }})
+    return &{{ $dataStruct.Name }}Builder{
+    {{- $dataStruct.Name | ToLower }}: &{{ $dataStruct.Name | ToLower }}}
+}
+{{ range $index, $field := $dataStruct.Fields }}
+func (b *{{ $dataStruct.Name }}Builder) With{{ $field.Name }}({{ $field.Name | ToLower }} {{ $field.Type }}) *{{ $dataStruct.Name }}Builder {
+    b.{{ $dataStruct.Name | ToLower }}.{{ $field.Name }} = {{ $field.Name | ToLower }}
+    return b
+}
+{{- end }}
+func (b *{{ $dataStruct.Name }}Builder) Build() *{{ $dataStruct.Package }}.{{ $dataStruct.Name }} {
+    return b.{{ $dataStruct.Name | ToLower }}
+}
+
+func (b *{{ $dataStruct.Name }}Builder) Empty() *{{ $dataStruct.Package }}.{{ $dataStruct.Name }} {
+    return &{{ $dataStruct.Package }}.{{ $dataStruct.Name }}{}
+}
+{{- end }}
