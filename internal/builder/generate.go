@@ -2,7 +2,6 @@ package builder
 
 import (
 	"embed"
-	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -10,43 +9,96 @@ import (
 	"text/template"
 )
 
-func Generate(file embed.FS) {
-	err := os.RemoveAll("testdatabuilder")
+const (
+	TestDataBuilderFolder = "testdatabuilder"
+	TestDataBuilderName   = "test-data-builder.go"
+	TemplatesFolder       = "templates"
+	TemplateName          = "test-builder.tmpl"
+)
+
+type Generator struct {
+	File    embed.FS
+	Builder *DataBuilder
+}
+
+func NewGenerator(file embed.FS) *Generator {
+	return &Generator{
+		File:    file,
+		Builder: &DataBuilder{},
+	}
+}
+
+func (gen *Generator) Generate() {
+
+	err := removeOldFolder()
 	if err != nil {
-		log.Println("error creating test data builder folder", err)
-		return
+		panic(err)
 	}
 
-	err = os.Mkdir("testdatabuilder", 0755)
+	err = createNewFolder()
 	if err != nil {
-		log.Println("error creating test data builder folder", err)
-		return
+		panic(err)
 	}
 
-	dataBuilder := DataBuilder{}
+	err = gen.findPackagesAndStructs()
+	if err != nil {
+		panic(err)
+	}
+
+	err = gen.createStructs()
+	if err != nil {
+		panic(err)
+	}
+
+	err = gen.createBuilderFromTemplate()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (gen *Generator) findPackagesAndStructs() error {
 	mapPackageStructs = make(map[string][]string)
 	filesPaths, _ := loadPaths(".")
 	rootPath, _ := os.Getwd()
 	baseDir := filepath.Base(rootPath)
-	r, _ := regexp.Compile(`type\s+[A-Za-z0-9_.]+\s+struct(?s)(.*?)}`)
+	r, err := regexp.Compile(`type\s+[A-Za-z0-9_.]+\s+struct(?s)(.*?)}`)
+	if err != nil {
+		return err
+	}
 	for _, filePath := range filesPaths {
 		fileData, _ := loadFile(filePath)
 		if r.MatchString(fileData) {
 			pathSlice := strings.Split(filePath, "/")
 			pathSlice = pathSlice[:len(pathSlice)-1]
-			dataBuilder.AddImportPath("", baseDir+"/"+strings.Join(pathSlice, "/"))
-			mapPackageStructs[getPackageName(fileData)] = r.FindAllString(fileData, -1)
+			gen.Builder.AddImportPath("", baseDir+"/"+strings.Join(pathSlice, "/"))
+			packageName, err := getPackageName(fileData)
+			if err != nil {
+				return err
+			}
+			mapPackageStructs[packageName] = r.FindAllString(fileData, -1)
 		}
 	}
 
+	return nil
+}
+
+func (gen *Generator) createStructs() error {
 	for packageName, structs := range mapPackageStructs {
 		for _, st := range structs {
-			ds := NewDataStructure(packageName, getStructName(st))
+			structName, err := getStructName(st)
+			if err != nil {
+				return err
+			}
+			ds := NewDataStructure(packageName, structName)
 			ds.AddFields(st)
-			dataBuilder.Structs = append(dataBuilder.Structs, *ds)
+			gen.Builder.Structs = append(gen.Builder.Structs, *ds)
 		}
 	}
 
+	return nil
+}
+
+func (gen *Generator) createBuilderFromTemplate() error {
 	funcMap := template.FuncMap{
 		"ToLower":    strings.ToLower,
 		"Contains":   strings.Contains,
@@ -54,23 +106,41 @@ func Generate(file embed.FS) {
 		"TrimPrefix": strings.TrimPrefix,
 	}
 
-	var tmplFile1 = "templates/test-builder.tmpl"
-	tmpl, err := template.New("test-builder.tmpl").Funcs(funcMap).ParseFS(file, tmplFile1)
+	tmpl, err := template.New(TemplateName).Funcs(funcMap).ParseFS(gen.File, TemplatesFolder+"/"+TemplateName)
 
 	if err != nil {
 		panic(err)
 	}
 
-	out, err := os.Create("testdatabuilder/test-data-builder.go")
+	out, err := os.Create(TestDataBuilderFolder + "/" + TestDataBuilderName)
 	if err != nil {
-		log.Println("error creating test data builder file", err)
-		return
+		return err
 	}
 
-	err = tmpl.Execute(out, dataBuilder)
+	err = tmpl.Execute(out, gen.Builder)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
+}
+
+func removeOldFolder() error {
+	err := os.RemoveAll(TestDataBuilderFolder)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createNewFolder() error {
+	err := os.Mkdir(TestDataBuilderFolder, 0755)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func loadPaths(rootPath string) ([]string, error) {
@@ -110,14 +180,20 @@ func loadFile(filePath string) (string, error) {
 	return string(fileData), nil
 }
 
-func getPackageName(fileData string) string {
-	r, _ := regexp.Compile(`package\s+[A-Za-z0-9_.]+`)
+func getPackageName(fileData string) (string, error) {
+	r, err := regexp.Compile(`package\s+[A-Za-z0-9_.]+`)
+	if err != nil {
+		return "", err
+	}
 	matches := r.FindAllString(fileData, -1)
-	return strings.TrimSpace(strings.Replace(matches[0], "package", "", 1))
+	return strings.TrimSpace(strings.Replace(matches[0], "package", "", 1)), nil
 }
 
-func getStructName(structDefinition string) string {
-	r, _ := regexp.Compile(`type\s+[A-Za-z0-9_.]+\s+struct`)
+func getStructName(structDefinition string) (string, error) {
+	r, err := regexp.Compile(`type\s+[A-Za-z0-9_.]+\s+struct`)
+	if err != nil {
+		return "", err
+	}
 	matches := r.FindAllString(structDefinition, -1)
-	return strings.TrimSpace(strings.Replace(strings.Replace(matches[0], "type", "", 1), "struct", "", 1))
+	return strings.TrimSpace(strings.Replace(strings.Replace(matches[0], "type", "", 1), "struct", "", 1)), nil
 }

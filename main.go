@@ -9,5 +9,6 @@ import (
 var f embed.FS
 
 func main() {
-	builder.Generate(f)
+	gen := builder.NewGenerator(f)
+	gen.Generate()
 }

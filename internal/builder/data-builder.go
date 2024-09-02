@@ -37,7 +37,7 @@ func (tdb *DataBuilder) ContainsImportPath(path string) bool {
 func FindStructPackage(structName string) string {
 	for packageName, structsDefinitions := range mapPackageStructs {
 		for _, definition := range structsDefinitions {
-			name := getStructName(definition)
+			name, _ := getStructName(definition)
 			if name == structName {
 				return packageName
 			}
@@ -50,7 +50,7 @@ func GetAllStructsNames() []string {
 	var names = []string{}
 	for _, structsDefinitions := range mapPackageStructs {
 		for _, definition := range structsDefinitions {
-			name := getStructName(definition)
+			name, _ := getStructName(definition)
 			names = append(names, name)
 		}
 	}
