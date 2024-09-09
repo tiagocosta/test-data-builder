@@ -15,7 +15,7 @@ var rootCmd = &cobra.Command{
 	Use:   "test-data-builder",
 	Short: "This tool helps developers create test data in an easy, flexible and simple way",
 	Long: `This tool scans your code looking for structs in order to automatically create builders for them.
-The created builder are under the testdatabuilder folder.
+The created builders are under the testdatabuilder folder.
 When you use the builders, you have the option of creating your structs from them with 
 the fields filled with random values ​​or default values or even to define wich value each field must have.
 For example:
@@ -37,7 +37,7 @@ For example:
 		userBulder := NewUserBuilder()
 		user := userBuilder.Build()
 
-	3) If necessary, you can change the value of any field according to your needs, keeping the others with the previously generated values:
+	3) If necessary, you can change the value of any field according to your needs, keeping the others with the generated random values:
 		userBulder := NewUserBuilder()
 		user := userBuilder.
 			WithName("Tiago").
@@ -57,5 +57,5 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
