@@ -3,7 +3,8 @@ package builder
 import (
 	"regexp"
 	"strings"
-	"test-data-builder/pkg/util"
+
+	"github.com/tiagocosta/test-data-builder/pkg/util"
 )
 
 type Field struct {

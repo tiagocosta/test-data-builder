@@ -1,14 +1,12 @@
+/*
+Copyright © 2024 Tiago Costa Silva <tiago.costa.silva@gmail.com>
+*/
 package main
 
 import (
-	"embed"
-	"test-data-builder/internal/builder"
+	"github.com/tiagocosta/test-data-builder/cmd"
 )
 
-//go:embed templates/test-builder.tmpl
-var f embed.FS
-
 func main() {
-	gen := builder.NewGenerator(f)
-	gen.Generate()
+	cmd.Execute()
 }

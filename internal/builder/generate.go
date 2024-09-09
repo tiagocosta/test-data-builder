@@ -9,21 +9,22 @@ import (
 	"text/template"
 )
 
+//go:embed fs/templates/test-builder.tmpl
+var EmbedTemplateFile embed.FS
+
 const (
 	TestDataBuilderFolder = "testdatabuilder"
 	TestDataBuilderName   = "test-data-builder.go"
-	TemplatesFolder       = "templates"
+	TemplatesFolder       = "fs/templates"
 	TemplateName          = "test-builder.tmpl"
 )
 
 type Generator struct {
-	File    embed.FS
 	Builder *DataBuilder
 }
 
-func NewGenerator(file embed.FS) *Generator {
+func NewGenerator() *Generator {
 	return &Generator{
-		File:    file,
 		Builder: &DataBuilder{},
 	}
 }
@@ -106,7 +107,7 @@ func (gen *Generator) createBuilderFromTemplate() error {
 		"TrimPrefix": strings.TrimPrefix,
 	}
 
-	tmpl, err := template.New(TemplateName).Funcs(funcMap).ParseFS(gen.File, TemplatesFolder+"/"+TemplateName)
+	tmpl, err := template.New(TemplateName).Funcs(funcMap).ParseFS(EmbedTemplateFile, TemplatesFolder+"/"+TemplateName)
 
 	if err != nil {
 		panic(err)
@@ -166,6 +167,7 @@ func loadPaths(rootPath string) ([]string, error) {
 
 func avoidPath(path string) bool {
 	return strings.Contains(path, "gerados") ||
+		strings.Contains(path, "generated") ||
 		strings.Contains(path, "graphql") ||
 		strings.Contains(path, "mock") ||
 		strings.Contains(path, ".git") ||
